@@ -1,0 +1,46 @@
+model {
+  for (i in 1:N) {
+    Y[i, 1:2] ~ dmnorm(mu[i,], Sigma.inv[,])
+    LL[i]<-logdensity.mnorm(Y[i,], mu[i,],Sigma.inv[,])
+    for (j in 1:2)  {
+      mu[i,j]<-alpha[j]+beta[x1[i],j]+species[sp[i],j]  
+      resid[i,j]<-Y[i,j]-mu[i,j]
+    }
+  }
+  #Prior for intercept for Linf and K
+  for(j in 1:2) {
+    alpha[j]~dnorm(0,1.0E-6)  #loop over Linf and K
+  }
+  # Fixed effect priors(e.g type of sample)
+  for(j in 1:2) { #loop over Linf and K
+    beta[1,j]<-0  #First level of factor is reference level, set equal to zero for both Linf (alpha1) and K (alpha2)
+    for(i in 2:n.beta) { #Loop over number of levels factor has 
+      beta[i,j]~dnorm(0,1.0E-6)  #uninformative prior
+    }}
+  # Random effect priors for species
+  sp.cor~dunif(-1,1)
+  for(j in 1:2) {
+    sp.tau[j]~dgamma(0.01,0.01)
+    sp.sd[j]<-1/sqrt(sp.tau[j])
+    sp.cov[j,j]<-1/sp.tau[j]
+    sp.mean[j]<-0
+ }
+  sp.cov[1,2]<-sp.cor*sp.sd[1]*sp.sd[2]
+  sp.cov[2,1]<-sp.cor*sp.sd[1]*sp.sd[2]
+  sp.prec[1 : 2 , 1 : 2]  <- inverse(sp.cov[ , ])
+  for(i in 1:n.sp) {
+    species[i,1:2]~dmnorm(sp.mean[],sp.prec[,])
+  }
+  Sigma.inv[1:2, 1:2] ~ dwish(R[,], 2)
+  Sigma[1:2, 1:2]<- inverse(Sigma.inv[,])
+  # predicted values for each species, for reference type of sample
+  for(i in 1:n.sp) {
+    for(j in 1:2) {
+      mean.mu[i,j]<-alpha[j]+species[i,j]
+      exp.mean[i,j]<-exp(mean.mu[i,j])
+    }}   
+  # population intercept without log
+  for(j in 1:2) {intercept[j]<-exp(alpha[j])}
+}
+
+
